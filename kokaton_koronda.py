@@ -139,7 +139,7 @@ class Oni(pg.sprite.Sprite):
         self.voice = pg.mixer.Sound("sound/sound.mp3")
         self.voice.play(-1)
 
-    def update(self):
+    def update(self, n:int, turn_min:int, turn_max: int):
         """
         鬼更新
         """
@@ -150,14 +150,43 @@ class Oni(pg.sprite.Sprite):
                 self.look_flag = True
                 self.image = self.image_front
                 self.voice.stop()
-                self.next_turn = now + 3
+                self.next_turn = now + n #次ステージ：n秒後に後ろ向き
 
         else:
             if now >= self.next_turn:
                 self.look_flag = False
                 self.image = self.image_back
                 self.voice.play(-1)
-                self.next_turn = now + random.uniform(5, 15)
+                self.next_turn = now + random.uniform(turn_min, turn_max) #次ステージ：振り向き間隔
+
+
+#爆弾クラスの追加
+class Bomb(pg.sprite.Sprite):
+    def __init__(self, life:int):
+        super().__init__()
+        rad = 40
+        self.image = pg.Surface((2*rad, 2*rad))
+        pg.draw.circle(self.image,(255,0,0),(rad, rad), rad)
+        self.image.set_colorkey((0, 0, 0))
+        self.image.set_alpha(200)
+        self.rect = self.image.get_rect()
+        centerx = random.randint(0,WIDTH)
+        centery = random.randint(0,HEIGHT)
+        self.rect.center = centerx, centery
+        self.life = life
+        
+    def update(self, player):
+        self.life -= 1
+        if self.life <= 0:
+            if self.rect.colliderect(player.rect):
+                return "boom"
+            self.kill()
+        elif self.life <= 3:
+            self.image.set_alpha(255)
+        elif self.life %30 >= 15:
+            self.image.set_alpha(0)
+        else:
+            self.image.set_alpha(120)
 
 
 def draw_text(
@@ -197,7 +226,9 @@ def draw_stamina(screen: pg.Surface, player: Player):
 
     draw_text(screen, "STAMINA", 30, (255, 255, 255), (120, 55))
 
-
+n = 3
+turn_min = 5
+turn_max = 15 #次ステージ：追加
 def main():
     pg.display.set_caption("こうかとんが転んだ")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
@@ -206,6 +237,8 @@ def main():
     bg_img = pg.image.load("fig/pg_bg.jpg")
     player = Player()
     oni = Oni()
+    bombs = pg.sprite.Group()
+    bomb_time = 0 #次ステージ：爆弾の規定
 
     while True:
         key_lst = pg.key.get_pressed()
@@ -219,13 +252,29 @@ def main():
         screen.blit(bg_img, [0, 0])
 
         player.update(key_lst)
-        oni.update()
+        oni.update(n, turn_min, turn_max) #次ステージ：追加した変数の規定
 
         screen.blit(player.image, player.rect)
         screen.blit(oni.image, oni.rect)
 
         # ★追加：スタミナ表示
         draw_stamina(screen, player)
+        
+        if n>=4: #1回クリア後、15秒ごとに爆弾が現れる
+            bomb_time += 1
+            if bomb_time %750 == 0:
+                for bomb in range(n+2): #ステージ数+4個の爆弾生成
+                    bombs.add(Bomb(200))
+                    pg.display.update()
+            
+            for bomb in bombs: #playerが爆弾の爆発時に当たったらgameover
+                crash = bomb.update(player)
+                screen.blit(bomb.image, bomb.rect)
+                if crash == "boom":
+                    gameover(screen)
+                    pg.display.update()
+                    time.sleep(3)
+                    return
 
         # ゲームオーバー
         if oni.look_flag and player.move_flag:
@@ -239,7 +288,7 @@ def main():
             clear(screen)
             pg.display.update()
             time.sleep(3)
-            return
+            return "clear" #次ステージ：変更
 
         pg.display.update()
         clock.tick(50)
@@ -249,7 +298,12 @@ if __name__ == "__main__":
     pg.init()
     while True:
         ret = main()
-        if ret != "restart":
+        if ret == "clear": #次ステージ：クリアのたび難易度up
+            n += 1
+            if turn_min > 1:
+                turn_max -= 2
+                turn_min -= 1
+        elif ret != "restart":
             break
     pg.quit()
     sys.exit()
