@@ -42,8 +42,17 @@ class Player(pg.sprite.Sprite):
 
         # スタート位置
         self.rect.center = (50, HEIGHT//2)
-        self.speed = 1
+
+        # ★変更：速度設定
+        self.normal_speed = 1
+        self.dash_speed = 3
+        self.speed = self.normal_speed
+
         self.move_flag = False
+
+        # ★追加：スタミナ
+        self.stamina = 100
+        self.max_stamina = 100
 
         # 足音
         self.walk_se = pg.mixer.Sound("sound/asioto.mp3")
@@ -52,7 +61,27 @@ class Player(pg.sprite.Sprite):
         """
         プレイヤー更新
         """
-        
+        sum_mv = [0, 0]
+        for k, mv in __class__.delta.items():
+            if key_lst[k]:
+                sum_mv[0] += mv[0]
+                sum_mv[1] += mv[1]
+        moving = (sum_mv != [0, 0])  # ★追加：移動中判定
+        # ★追加：ダッシュ処理
+        if key_lst[pg.K_LSHIFT] and self.stamina > 0:
+            self.speed = self.dash_speed
+            self.stamina -= 1
+        else:
+            self.speed = self.normal_speed
+            if not moving:
+                self.stamina += 0.2
+
+        # ★追加：スタミナ制限
+        if self.stamina < 0:
+            self.stamina = 0
+        if self.stamina > self.max_stamina:
+            self.stamina = self.max_stamina
+
         sum_mv = [0, 0]
         for k, mv in __class__.delta.items():
             if key_lst[k]:
@@ -60,29 +89,25 @@ class Player(pg.sprite.Sprite):
                 sum_mv[1] += mv[1]
 
         self.rect.move_ip(
-            self.speed*sum_mv[0],
-            self.speed*sum_mv[1]
+            self.speed * sum_mv[0],
+            self.speed * sum_mv[1]
         )
 
         # 画面外判定
         if check_bound(self.rect) != (True, True):
             self.rect.move_ip(
-                -self.speed*sum_mv[0],
-                -self.speed*sum_mv[1]
+                -self.speed * sum_mv[0],
+                -self.speed * sum_mv[1]
             )
 
         # 移動判定
         if sum_mv != [0, 0]:
             self.move_flag = True
 
-            # 足音再生
             if not self.walk_se.get_num_channels():
                 self.walk_se.play(-1)
-
         else:
             self.move_flag = False
-            
-            # 足音停止
             self.walk_se.stop()
 
 
@@ -120,31 +145,18 @@ class Oni(pg.sprite.Sprite):
         """
         now = time.time()
 
-        # 後ろ向き中
         if not self.look_flag:
-
-            # ランダム時間経過で振り向く
             if now >= self.next_turn:
                 self.look_flag = True
                 self.image = self.image_front
-
-                # 音声停止
                 self.voice.stop()
-
-                # 3秒後に後ろ向きへ戻る
                 self.next_turn = now + 3
 
-        # 前向き中
         else:
-            # 3秒経過したら後ろ向き
             if now >= self.next_turn:
                 self.look_flag = False
                 self.image = self.image_back
-
-                # 音声再生
                 self.voice.play(-1)
-
-                # 次の振り向き
                 self.next_turn = now + random.uniform(5, 15)
 
 
@@ -158,7 +170,6 @@ def draw_text(
     """
     文字表示
     """
-
     font = pg.font.Font(None, size)
     txt = font.render(text, True, color)
     rect = txt.get_rect()
@@ -168,14 +179,23 @@ def draw_text(
 
 def gameover(screen: pg.Surface):
     fonto = pg.font.Font(None, 80)
-    txt = fonto.render("Game Over", True, (255,0,0))
-    screen.blit(txt,[WIDTH//2-150,HEIGHT//2])
-    
+    txt = fonto.render("Game Over", True, (255, 0, 0))
+    screen.blit(txt, [WIDTH//2-150, HEIGHT//2])
+
 
 def clear(screen: pg.Surface):
     fonto = pg.font.Font(None, 80)
-    txt = fonto.render("Clear!", True, (0,255,0))
-    screen.blit(txt,[WIDTH//2-150,HEIGHT//2])
+    txt = fonto.render("Clear!", True, (0, 255, 0))
+    screen.blit(txt, [WIDTH//2-150, HEIGHT//2])
+
+
+# ★追加：スタミナバー表示
+def draw_stamina(screen: pg.Surface, player: Player):
+    pg.draw.rect(screen, (255, 255, 255), [20, 20, 200, 20])
+    pg.draw.rect(screen, (0, 255, 0), [20, 20, player.stamina * 2, 20])
+    pg.draw.rect(screen, (0, 0, 0), [20, 20, 200, 20], 2)
+
+    draw_text(screen, "STAMINA", 30, (255, 255, 255), (120, 55))
 
 
 def main():
@@ -183,7 +203,6 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     clock = pg.time.Clock()
 
-    bg_img = pg.Surface((WIDTH, HEIGHT))
     bg_img = pg.image.load("fig/pg_bg.jpg")
     player = Player()
     oni = Oni()
@@ -194,15 +213,19 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return
-            # リスタート
             if event.type == pg.KEYDOWN and event.key == pg.K_r:
                 return "restart"
 
         screen.blit(bg_img, [0, 0])
+
         player.update(key_lst)
         oni.update()
+
         screen.blit(player.image, player.rect)
         screen.blit(oni.image, oni.rect)
+
+        # ★追加：スタミナ表示
+        draw_stamina(screen, player)
 
         # ゲームオーバー
         if oni.look_flag and player.move_flag:
