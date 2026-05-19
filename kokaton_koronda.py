@@ -208,7 +208,7 @@ class Oni(pg.sprite.Sprite):
 
 def check_hidden(player: Player, obstacles: pg.sprite.Group) -> bool:
     """
-    仕様: 隠れ判定のルール（上下35px以上重なっていればセーフ）
+    隠れ判定のルール（上下35px以上重なっていればセーフ）
     """
     REQUIRED_OVERLAP = 35  # プレイヤーの体のうち、縦に35ピクセル以上が遮蔽物の高さの中に収まっていればセーフ
 
@@ -289,8 +289,6 @@ def main():
                 return "restart"
 
         screen.blit(bg_img, [0, 0])
-
-        # 各オブジェクトのアップデート（ブロック群を連携）
         player.update(key_lst, obstacles)
         oni.update(obstacles)
 
