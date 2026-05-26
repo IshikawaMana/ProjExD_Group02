@@ -389,13 +389,11 @@ def main():
     Obstacle.BLOCK_IMAGE = pg.transform.scale(
         loaded_img, (Obstacle.WIDTH, Obstacle.HEIGHT)
     )
-
     player = Player()
     oni = Oni()
     life = Life(num=3)
     bombs = pg.sprite.Group()
     bomb_time = 0
-
     muteki_time = 0
 
     # 時間停止スキル
@@ -427,9 +425,8 @@ def main():
                     cooldown_end = t + COOLDOWN
 
         screen.blit(bg_img, [0, 0])
-
         player.update(key_lst, obstacles)
-
+        
         t = time.time()
         if t >= stop_time:
             oni.update(obstacles, n, turn_min, turn_max)
@@ -465,7 +462,30 @@ def main():
         cd = max(0, int(cooldown_end - time.time()))
         draw_text(screen, f"Skill CD: {cd}", 40, (255, 255, 0), (300, 30))
 
+        # 経過時間
+        elapsed = int(time.time() - start_time)
+        draw_text(screen, f"Time: {elapsed}", 40, (255, 255, 255), (100, 30))
+
+        # クールタイム
+        cd = max(0, int(cooldown_end - time.time()))
+        draw_text(screen, f"Skill CD: {cd}", 40, (255, 255, 0), (300, 30))
         draw_stamina(screen, player)
+        
+        if n>=4: #1回クリア後、爆弾が現れる
+            bomb_time += 1
+            if bomb_time %500 == 0:
+                for bomb in range(n+2):
+                    bombs.add(Bomb(200))
+                    pg.display.update()
+            
+            for bomb in bombs:
+                crash = bomb.update(player)
+                screen.blit(bomb.image, bomb.rect)
+                if crash == "boom":
+                    gameover(screen)
+                    pg.display.update()
+                    time.sleep(3)
+                    return
 
         # ゲームオーバー判定
         if oni.look_flag and player.move_flag:
