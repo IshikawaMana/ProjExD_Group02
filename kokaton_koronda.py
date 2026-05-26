@@ -23,7 +23,6 @@ def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
         tate = False
     return yoko, tate
 
-
 def draw_heart_surface(size: int, color: tuple) -> pg.Surface:
     """
     数式を使ってハート形を描いたSurface
@@ -159,9 +158,6 @@ class Player(pg.sprite.Sprite):
         self.normal_speed = 1
         self.dash_speed = 3
         self.speed = self.normal_speed
-
-        self.rect.center = (50, HEIGHT // 2)
-        self.speed = 1
         self.move_flag = False
 
         # ★追加：スタミナ
@@ -195,15 +191,7 @@ class Player(pg.sprite.Sprite):
         if self.stamina > self.max_stamina:
             self.stamina = self.max_stamina
 
-        sum_mv = [0, 0]
-        for k, mv in __class__.delta.items():
-            if key_lst[k]:
-                sum_mv[0] += mv[0]
-                sum_mv[1] += mv[1]
-
         self.rect.move_ip(
-            self.speed * sum_mv[0],
-            self.speed * sum_mv[1],
             self.speed * sum_mv[0],
             self.speed * sum_mv[1]
         )
@@ -212,11 +200,9 @@ class Player(pg.sprite.Sprite):
             self.rect.move_ip(
                 -self.speed * sum_mv[0],
                 -self.speed * sum_mv[1]
-                - self.speed * sum_mv[0],
-                -self.speed * sum_mv[1]
             )
 
-        if sum_mv != [0, 0]:
+        if moving:
             self.move_flag = True
 
             if not self.walk_se.get_num_channels():
@@ -294,10 +280,6 @@ def gameover(screen: pg.Surface):
     txt = fonto.render("Game Over", True, (255, 0, 0))
     screen.blit(txt, [WIDTH//2-150, HEIGHT//2])
 
-    txt = fonto.render("Game Over", True, (255, 0, 0))
-    screen.blit(txt, [WIDTH // 2 - 150, HEIGHT // 2])
-
-
 def clear(screen: pg.Surface):
     fonto = pg.font.Font(None, 80)
     txt = fonto.render("Clear!", True, (0, 255, 0))
@@ -311,9 +293,6 @@ def draw_stamina(screen: pg.Surface, player: Player):
     pg.draw.rect(screen, (0, 0, 0), [20, 20, 200, 20], 2)
 
     draw_text(screen, "STAMINA", 30, (255, 255, 255), (120, 55))
-    txt = fonto.render("Clear!", True, (0, 255, 0))
-    screen.blit(txt, [WIDTH // 2 - 150, HEIGHT // 2])
-
 
 def main():
     pg.display.set_caption("こうかとんが転んだ")
